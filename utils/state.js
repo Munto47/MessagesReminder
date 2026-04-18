@@ -6,6 +6,8 @@ const defaultState = () => ({
   lastTokenAlertAt: null,
   /** 首次成功拉取并完成基线后设为 true，避免第一次把历史消息全部推送 */
   initialScanDone: false,
+  /** 无原生递增 ID 时，使用稳定指纹判重 */
+  seenMessageFingerprints: [],
 });
 
 /**
@@ -26,7 +28,7 @@ export class MessageStateStore {
   }
 
   /**
-   * @returns {Promise<{ lastMessageId: string | null, lastTokenAlertAt: number | null, initialScanDone: boolean }>}
+   * @returns {Promise<{ lastMessageId: string | null, lastTokenAlertAt: number | null, initialScanDone: boolean, seenMessageFingerprints: string[] }>}
    */
   async read() {
     try {
@@ -41,6 +43,11 @@ export class MessageStateStore {
             ? data.lastTokenAlertAt
             : null,
         initialScanDone: Boolean(data.initialScanDone),
+        seenMessageFingerprints: Array.isArray(data.seenMessageFingerprints)
+          ? data.seenMessageFingerprints
+              .filter((item) => typeof item === "string" && item.trim() !== "")
+              .map((item) => item.trim())
+          : [],
       };
     } catch (e) {
       if (e && (e.code === "ENOENT" || e.code === "ENOTDIR")) {
@@ -51,7 +58,7 @@ export class MessageStateStore {
   }
 
   /**
-   * @param {Partial<{ lastMessageId: string | null, lastTokenAlertAt: number | null, initialScanDone: boolean }>} patch
+   * @param {Partial<{ lastMessageId: string | null, lastTokenAlertAt: number | null, initialScanDone: boolean, seenMessageFingerprints: string[] }>} patch
    */
   async write(patch) {
     await this.ensureDir();
